@@ -1,0 +1,34 @@
+[project]
+name = "policypilot"
+version = "0.2.0"
+description = "Evidence-grounded SEC filing research with LangGraph and Azure Databricks"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "langgraph>=1.0,<2", "pydantic>=2.9,<3", "requests>=2.32,<3",
+  "beautifulsoup4>=4.12,<5", "python-dotenv>=1,<2", "numpy>=1.26,<3",
+  "groq>=0.13,<2", "streamlit>=1.40,<2"
+]
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=3.3,<6"]
+databricks = ["databricks-sdk>=0.36,<1", "databricks-vectorsearch>=0.40,<1"]
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.12", "build>=1"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[tool.hatch.build.targets.wheel]
+packages = ["src/policypilot"]
+[project.scripts]
+policypilot = "policypilot.cli:main"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+[tool.ruff]
+line-length = 100
+extend-exclude = ["reference"]
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "docs/", "eval/", "notebooks/", "scripts/", ".github/", "app.py", "README.md", "pyproject.toml", "uv.lock", "requirements.txt", "databricks.yml", ".env.example", ".gitignore"]
+
+exclude = ["/reference", "/data", "/tmp", "/.venv", "/.git", "/dist"]

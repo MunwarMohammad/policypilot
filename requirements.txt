@@ -1,0 +1,2 @@
+# Databricks Apps installs this file. uv.lock pins the local/CI dependency graph.
+.[semantic,databricks]

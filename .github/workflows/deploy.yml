@@ -1,0 +1,36 @@
+name: Deploy Databricks dev app
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: databricks-dev
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_AUTH_TYPE: github-oidc
+      BUNDLE_VAR_vector_endpoint: ${{ vars.PP_VECTOR_ENDPOINT }}
+      BUNDLE_VAR_vector_index: ${{ vars.PP_VECTOR_INDEX }}
+      BUNDLE_VAR_model_service: ${{ vars.PP_MODEL_SERVICE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --group dev --python 3.11
+      - run: uv run pytest -q
+      - uses: databricks/setup-cli@main
+      - name: Require deployment configuration
+        run: |
+          test -n "$DATABRICKS_HOST"
+          test -n "$DATABRICKS_CLIENT_ID"
+          test -n "$BUNDLE_VAR_vector_endpoint"
+          test -n "$BUNDLE_VAR_vector_index"
+          test -n "$BUNDLE_VAR_model_service"
+      - run: databricks bundle validate -t dev
+      - run: databricks bundle deploy -t dev
+      - run: databricks bundle run policypilot_app -t dev

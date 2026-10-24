@@ -1,0 +1,42 @@
+bundle:
+  name: policypilot
+variables:
+  vector_endpoint:
+    description: Existing STANDARD Vector Search endpoint
+  vector_index:
+    description: Fully qualified Delta Sync index
+  model_service:
+    description: Existing Unity Gateway model service
+resources:
+  apps:
+    policypilot_app:
+      name: policypilot
+      description: Evidence-grounded SEC filing research
+      source_code_path: .
+      config:
+        command: [streamlit, run, app.py, --server.address, 0.0.0.0]
+        env:
+          - name: PP_BACKEND
+            value: databricks
+          - name: PP_VECTOR_ENDPOINT
+            value: ${var.vector_endpoint}
+          - name: PP_VECTOR_INDEX
+            value: ${var.vector_index}
+          - name: PP_MODEL_SERVICE
+            value: ${var.model_service}
+          - name: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+            value: 'false'
+targets:
+  dev:
+    default: true
+    mode: development
+sync:
+  exclude:
+    - reference/**
+    - data/**
+    - tmp/**
+    - .env
+    - .env.*
+    - .venv/**
+    - tests/**
+    - dist/**
