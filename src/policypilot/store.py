@@ -13,7 +13,8 @@ from policypilot.models import Hit, Passage
 
 
 class LocalStore:
-    def __init__(self, path: Path, embedder):
+    def __init__(self, path: Path, embedder, *, hybrid=False, reranker=None):
+        self.hybrid, self.reranker = hybrid, reranker
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path, self.embedder = path, embedder
         with self.connect() as db:
@@ -66,7 +67,20 @@ class LocalStore:
             raise ValueError("Embedding dimensions changed; rebuild the index")
         denom = np.linalg.norm(vectors, axis=1) * np.linalg.norm(q)
         scores = np.divide(vectors @ q, denom, out=np.zeros(len(rows)), where=denom > 0)
-        indices = np.argsort(-scores, kind="stable")[:k]
+        indices = np.argsort(-scores, kind="stable")
+        if self.hybrid or self.reranker is not None:
+            from policypilot.ranking import hybrid_order
+
+            texts = [json.loads(row[0])["text"] for row in rows]
+            if self.hybrid:
+                indices = hybrid_order(query, texts, scores)
+            if self.reranker is not None:
+                pool = indices[: max(k, 20)]
+                relevance = np.asarray(
+                    self.reranker.predict([(query, texts[i]) for i in pool])
+                ).reshape(-1)
+                indices = pool[np.argsort(-relevance, kind="stable")]
+        indices = indices[:k]
         return [
             Hit(passage=Passage.model_validate_json(rows[i][0]), score=float(scores[i]))
             for i in indices

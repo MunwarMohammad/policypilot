@@ -38,6 +38,7 @@ class Answer(Record):
 
 
 class Plan(Record):
+    overview: bool = False
     query: str = Field(min_length=1, max_length=1000)
 
 

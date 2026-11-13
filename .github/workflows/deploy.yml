@@ -23,7 +23,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --group dev --python 3.11
       - run: uv run pytest -q
-      - uses: databricks/setup-cli@main
+      - uses: databricks/setup-cli@2da6132749245fbffb3c10d57cec219de3669967 # v1.26.0
       - name: Require deployment configuration
         run: |
           test -n "$DATABRICKS_HOST"

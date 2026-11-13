@@ -1,13 +1,18 @@
-# PolicyPilot — SEC Filing Research with Agentic RAG
+# SEC Annual Filing Research with LangGraph
 
-A Python application that retrieves evidence from SEC 10-K filings, drafts cited answers,
-and refuses answers that fail evidence checks. Built with LangGraph, local semantic search,
-and adapters for Azure Databricks, Unity Catalog, Delta Lake, Vector Search and Unity Gateway.
+[![CI](https://github.com/MunwarMohammad/policypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/MunwarMohammad/policypilot/actions/workflows/ci.yml)
 
-**Status:** implementation with offline tests and a runnable demo. Live SEC ingestion needs
-an identifying user-agent; model inference needs a Groq key or configured Databricks model
-service. Azure resources have not been deployed or verified in a user workspace. This repo
-supports a 20-company universe; it does not claim that all 20 have already been ingested.
+Ask a question about a company’s latest indexed 10-K. The app answers first, then links each numbered citation to a supporting quote and its SEC filing.
+
+![Local Apple filing answer with numbered SEC citations](docs/evidence/filing-answer.png)
+
+| Local run | Result |
+|---|---:|
+| Companies indexed | 20 |
+| Annual filings | 20 |
+| Searchable passages | 8,588 |
+
+[Per-company ingestion evidence](docs/evidence/ingestion.csv). These are corpus counts, not accuracy metrics. Azure adapters are implemented but have not been deployed or validated.
 
 ## Quick start
 
@@ -132,7 +137,16 @@ scripts/create_vector_index.py
 .github/workflows/           Offline CI and manual cloud deployment
 ```
 
-Read [the concepts lesson](docs/01-understand-the-flow.md), [deployment](docs/deployment.md),
-and [GitHub publishing](docs/github.md). The supplied reference archive is excluded from
-Git and release packaging. This implementation was written separately; see
-[reference review](docs/reference-review.md) for its design context.
+See [design decisions](docs/design-decisions.md) and [Azure deployment instructions](docs/deployment.md).
+
+## Acknowledgements
+
+The architecture was informed by [azure-databricks-agentic-qa](https://github.com/yashprogrammer/azure-databricks-agentic-qa). This implementation uses token-aware chunking, a SQLite vector store, and claim-level quote and support checks.
+
+## Local research features
+
+Set `PP_HYBRID=1` in .env for BM25 + dense cosine retrieval combined by reciprocal rank fusion. Add `PP_RERANK=1` to rescore up to 20 candidates per query with a cross-encoder. Restart Streamlit after changing retrieval options. These switches affect local search; the existing cosine floor still applies after ranking.
+
+The model selects a scoped filing search or multi-query overview through the chat tool API. Streamlit passes up to three previous successful turns for the same ticker to resolve follow-ups. Browser-session context is not durable user memory. Local UI refusals enter a SQLite review queue. Inspect with `uv run python -m policypilot.review`; resolve with `--resolve ID --note "review findings"`. Resolution records an operator decision; it does not auto-publish an answer.
+
+Reproduce the two-question passage-label smoke benchmark with `uv run --extra semantic python scripts/benchmark.py --rerank`. Dense recall@5 / MRR@5: 0.50 / 0.50; hybrid: 1.00 / 0.625; hybrid + reranking: 1.00 / 0.625. This tiny development set does not demonstrate a general quality gain.

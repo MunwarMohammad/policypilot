@@ -113,3 +113,8 @@ before production adoption. See [federation setup](https://learn.microsoft.com/e
 The deployment workflow deploys an app against preconfigured infrastructure. It does not
 run ingestion, create the gateway, grant permissions, or execute live evaluation. Those
 steps remain explicit so a GitHub push cannot silently provision billable infrastructure.
+
+### Gateway guardrail acceptance test (pending workspace deployment)
+
+Enable Unity Gateway Service Policies in a supported dev workspace. On the model service's Policies tab, configure the built-in unsafe-content policy for input and output and the jailbreak policy for input. Include the application's service principal in scope. Verify a benign filing question succeeds, a controlled policy test is denied, and the gateway audit record identifies the policy. Record prerequisites, policy scope, test timestamps and outcomes before claiming enforcement. These workspace policies have not been installed by this repository.
+[Azure Databricks guardrail tutorial](https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/ai-governance/moderate-tutorial)

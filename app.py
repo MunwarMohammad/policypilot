@@ -1,8 +1,10 @@
 """Run with: uv run streamlit run app.py"""
 
 import streamlit as st
+from groq import BadRequestError
 
 from policypilot.config import TICKERS, Settings
+from policypilot.llm import provider_code
 
 st.set_page_config(page_title="PolicyPilot", page_icon="📑", layout="wide")
 st.title("PolicyPilot")
@@ -30,7 +32,7 @@ if question:
                     from policypilot.demo import build_graph
 
                     state = build_graph().invoke({"question": question, "ticker": ticker})
-                    st.write(state["answer"])
+                    st.markdown(state["answer"].replace("$", r"\$"))
                     for source in state["sources"]:
                         with st.expander(source.id + " — " + source.source):
                             st.write(source.text)
@@ -46,18 +48,43 @@ if question:
                     def get_store(settings):
                         return retrieval(settings)
 
+                    history = st.session_state.setdefault("filing_threads", {}).setdefault(
+                        ticker, []
+                    )
                     state = build_agent(
                         JSONModel(settings.backend), get_store(settings), settings.min_score
-                    ).invoke({"question": question, "ticker": ticker})
-                    st.write(state["answer"])
-                    for i, hit in enumerate(state["hits"], 1):
-                        p = hit.passage
-                        with st.expander(f"[{i}] {p.company} — report date {p.report_date}"):
-                            st.write(p.text)
-                            st.caption(f"Filed {p.filing_date} · Accession {p.accession}")
-                            st.link_button("Open SEC filing", p.source_url)
+                    ).invoke({"question": question, "ticker": ticker, "history": history[-3:]})
+                    if state["reason"] == "checks_passed":
+                        history.append({"question": question, "answer": state["answer"]})
+                    elif settings.backend == "local":
+                        from policypilot.review import enqueue
+
+                        ticket = enqueue(settings.data_dir, ticker, question, state)
+                        st.caption(f"Queued for local human review (#{ticket}).")
+                    from policypilot.presentation import citation_notes
+
+                    st.markdown("**Answer**")
+                    st.markdown(state["answer"].replace("$", r"\$"))
+                    notes = list(citation_notes(state))
+                    if notes:
+                        st.markdown("**Citations**")
+                    for label, url, quotes in notes:
+                        st.write(label)
+                        st.markdown(f"[Open SEC filing]({url})")
+                        for quote in quotes:
+                            st.text("“" + " ".join(quote.split()) + "”")
                 with st.expander("Execution trace"):
                     st.write(" → ".join(state["trace"]))
+        except BadRequestError as exc:
+            known = {
+                "context_length_exceeded": "The question and evidence exceeded the model context limit.",
+                "model_decommissioned": "The configured Groq model is no longer available.",
+                "json_validate_failed": "The model could not produce a valid structured answer.",
+            }
+            st.error(
+                known.get(provider_code(exc), "Groq rejected the model request (HTTP 400).")
+                + " No verified answer was produced."
+            )
         except Exception as exc:
             # Avoid exposing credentials, provider response bodies or SDK request headers.
             st.error(

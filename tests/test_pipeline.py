@@ -206,3 +206,32 @@ def test_ingestion_reports_partial_failure(tmp_path):
     report = ingest(["AAPL"], Client(), None, None, tmp_path)
     assert report[0]["status"] == "failed"
     assert json.loads((tmp_path / "ingestion-report.json").read_text())["results"] == report
+
+
+def test_overview_excludes_listing_history_but_keeps_business_evidence():
+    listing = passage(text="Class A shares are listed on the Nasdaq Global Select Market.")
+    business = passage(text="The company sells computers and mobile phones.", identifier="c2")
+    hits = [Hit(passage=p, score=1) for p in (listing, business)]
+
+    class OverviewModel:
+        def generate(self, instruction, payload, schema):
+            if schema is Plan:
+                return Plan(query="annual report", overview=True)
+            if schema is Answer:
+                return Answer(
+                    claims=[
+                        Claim(text=p.text, quote=p.text, source_id=f"S{i}")
+                        for i, p in enumerate((listing, business), 1)
+                    ]
+                )
+            return Judgment(supported=[True] * len(payload["claims"]))
+
+    store = FakeStore(hits)
+    result = build_agent(OverviewModel(), store).invoke(
+        {"question": "Tell me about the 10-K", "ticker": "AAPL"}
+    )
+    assert len(set(store.calls)) == 3
+    assert "2025-12-31" in result["answer"]
+    assert business.text + " [1]" in result["answer"]
+    assert listing.text not in result["answer"]
+    assert [h.passage.chunk_id for h in result["cited_hits"]] == ["c2"]

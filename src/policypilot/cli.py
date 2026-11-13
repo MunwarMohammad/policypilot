@@ -70,10 +70,13 @@ def main():
                 {"question": args.question, "ticker": args.ticker}
             )
             print(state["answer"])
+            from policypilot.presentation import citation_notes
+
+            notes = list(citation_notes(state))
+            if notes:
+                print("\nCitations:")
+            for label, url, quotes in notes:
+                print(label, url, *quotes, sep="\n")
             print("\nTrace:", " -> ".join(state["trace"]))
-            for i, hit in enumerate(state["hits"], 1):
-                p = hit.passage
-                print(f"[{i}] {p.ticker} | report {p.report_date} | filed {p.filing_date}")
-                print(p.source_url)
     except (ValueError, KeyError, ImportError) as exc:
         parser.exit(2, f"Configuration/data error: {exc}\n")
