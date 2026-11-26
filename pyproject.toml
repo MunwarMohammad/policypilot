@@ -1,34 +1,49 @@
 [project]
 name = "policypilot"
-version = "0.2.0"
-description = "Evidence-grounded SEC filing research with LangGraph and Azure Databricks"
+version = "0.1.0"
+description = "Governed regulatory/policy Q&A copilot — Databricks + Azure agentic AI portfolio project"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 dependencies = [
-  "langgraph>=1.0,<2", "pydantic>=2.9,<3", "requests>=2.32,<3",
-  "beautifulsoup4>=4.12,<5", "python-dotenv>=1,<2", "numpy>=1.26,<3",
-  "groq>=0.13,<2", "streamlit>=1.40,<2"
+    "groq>=0.13.0",
+    "langgraph>=0.2.60",
+    "chromadb>=0.5.20",
+    "sentence-transformers>=3.3.0",
+    "streamlit>=1.40.0",
+    "requests>=2.32.0",
+    "python-dotenv>=1.0.1",
+    "beautifulsoup4>=4.12.3",
+    "pydantic>=2.9.0",
 ]
+
 [project.optional-dependencies]
-semantic = ["sentence-transformers>=3.3,<6"]
-databricks = ["databricks-sdk>=0.36,<1", "databricks-vectorsearch>=0.40,<1"]
-[dependency-groups]
-dev = ["pytest>=8,<10", "ruff>=0.12", "build>=1"]
+databricks = [
+    "databricks-sdk>=0.36.0",
+    "databricks-vectorsearch>=0.40",
+]
+eval = [
+    "mlflow[databricks]>=3.1",
+]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/policypilot"]
-[project.scripts]
-policypilot = "policypilot.cli:main"
-[tool.pytest.ini_options]
-testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
-extend-exclude = ["reference"]
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "UP"]
-[tool.hatch.build.targets.sdist]
-include = ["src/", "tests/", "docs/", "eval/", "notebooks/", "scripts/", ".github/", "app.py", "README.md", "pyproject.toml", "uv.lock", "requirements.txt", "databricks.yml", ".env.example", ".gitignore"]
+src = ["src", "tests"]
+extend-exclude = ["notebooks"]
 
-exclude = ["/reference", "/data", "/tmp", "/.venv", "/.git", "/dist"]
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
